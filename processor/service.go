@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os/exec"
 	"strings"
 
@@ -13,9 +14,10 @@ import (
 )
 
 type IProcessorService interface {
-	Initialize(writer *io.PipeWriter) (*exec.Cmd, error)
+	Initialize(path string, writer *io.PipeWriter) (*exec.Cmd, error)
 	Start(cmd *exec.Cmd, cmdDone context.CancelFunc, writer *io.PipeWriter)
-	Read(assetService asset.IAssetService, reader *io.PipeReader, scannerStopped chan struct{})
+	Read(assetService asset.IAssetService, reader *io.PipeReader, scannerStopped chan struct{}, assetProcessedChannel chan []asset.AssetProcessedResult)
+	WriteOutput(path string, assetProcessedResults []asset.AssetProcessedResult) error
 }
 
 type ProcessorService struct{}
@@ -24,8 +26,8 @@ func NewProcessorService() IProcessorService {
 	return &ProcessorService{}
 }
 
-func (ps ProcessorService) Initialize(writer *io.PipeWriter) (*exec.Cmd, error) {
-	cmd := exec.Command("./data/raw/Binaries stdoutinator_amd64_linux.bin")
+func (ps ProcessorService) Initialize(path string, writer *io.PipeWriter) (*exec.Cmd, error) {
+	cmd := exec.Command(path)
 	cmd.Stdout = writer
 	err := cmd.Start()
 	if err != nil {
@@ -48,6 +50,7 @@ func (ps ProcessorService) Read(
 	assetService asset.IAssetService,
 	reader *io.PipeReader,
 	scannerStopped chan struct{},
+	assetProcessedChannel chan []asset.AssetProcessedResult,
 ) {
 	defer close(scannerStopped)
 
@@ -75,11 +78,18 @@ func (ps ProcessorService) Read(
 	}
 
 	assetProcessedResults := assetService.ProcessResults(cache)
-	for _, assetProcessedResult := range assetProcessedResults {
-		b, err := json.Marshal(assetProcessedResult)
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println(string(b))
+	assetProcessedChannel <- assetProcessedResults
+	// ps.WriteOutput("./data/processed/results.json", assetProcessedResults)
+}
+
+func (ps ProcessorService) WriteOutput(
+	path string,
+	assetProcessedResults []asset.AssetProcessedResult,
+) error {
+	file, _ := json.MarshalIndent(assetProcessedResults, "", " ")
+	err := ioutil.WriteFile(path, file, 0644)
+	if err != nil {
+		return err
 	}
+	return nil
 }
