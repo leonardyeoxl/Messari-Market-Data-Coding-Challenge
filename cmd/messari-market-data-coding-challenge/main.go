@@ -2,16 +2,22 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"io"
-	"log"
 	"os"
 
 	"github.com/joho/godotenv"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/leonardyeoxl/messari-market-data-coding-challenge/asset"
 	"github.com/leonardyeoxl/messari-market-data-coding-challenge/processor"
 )
+
+func init() {
+	log.SetFormatter(&log.TextFormatter{
+		FullTimestamp: true,
+	})
+	log.SetReportCaller(true)
+}
 
 func main() {
 	err := godotenv.Load()
@@ -30,7 +36,7 @@ func main() {
 	processorService := processor.NewProcessorService()
 	cmd, err := processorService.Initialize(tradeObjectsStdoutBinaryPath, writer)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Fatal(err.Error())
 	}
 	assetService := asset.NewAssetService()
 

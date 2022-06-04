@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os/exec"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/leonardyeoxl/messari-market-data-coding-challenge/asset"
 )
@@ -71,7 +72,7 @@ func (ps ProcessorService) Read(
 
 		asset, err := assetService.Process(line)
 		if err != nil {
-			fmt.Println(err.Error())
+			log.Fatal(err.Error())
 		} else {
 			assetService.Calculate(asset, cache)
 		}
